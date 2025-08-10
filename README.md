@@ -1,94 +1,107 @@
-# Obsidian Sample Plugin
+# Local Edge TTS - Obsidian 插件
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+这是一个基于 Microsoft Edge TTS 的 Obsidian 插件，支持高质量的多语言文本朗读功能。
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## ✨ 主要功能
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+- 🎯 **高质量语音合成**：使用 Microsoft Edge 的神经网络语音技术
+- 🌍 **多语言支持**：支持中文、英语、西班牙语等多种语言
+- 🎚️ **语音控制**：可调节播放速度、选择不同声音
+- 📝 **智能文本处理**：自动过滤 Markdown 格式，提升朗读效果
+- 🔊 **便捷操作**：支持快捷键、状态栏、命令面板等多种触发方式
 
-## First time developing plugins?
+## 🚀 支持的语音
 
-Quick starting guide for new plugin devs:
+### 中文 🇨🇳
+- 晓晓 (女) - zh-CN-XiaoxiaoNeural
+- 云希 (男) - zh-CN-YunxiNeural
+- 云扬 (男) - zh-CN-YunyangNeural
+- 晓伊 (女) - zh-CN-XiaoyiNeural
+- 等多种中文语音...
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+### English 🇺🇸🇬🇧🇦🇺
+- Aria (Female) - en-US-AriaNeural
+- Jenny (Female) - en-US-JennyNeural
+- Guy (Male) - en-US-GuyNeural
+- Sonia (UK Female) - en-GB-SoniaNeural
+- Ryan (UK Male) - en-GB-RyanNeural
+- Natasha (AU Female) - en-AU-NatashaNeural
+- 等多种英语语音...
 
-## Releasing new releases
+### Español 🇪🇸🇲🇽🇦🇷
+- Elvira (Mujer) - es-ES-ElviraNeural
+- Álvaro (Hombre) - es-ES-AlvaroNeural
+- Dalia (México Mujer) - es-MX-DaliaNeural
+- Jorge (México Hombre) - es-MX-JorgeNeural
+- Elena (Argentina Mujer) - es-AR-ElenaNeural
+- 等多种西班牙语语音...
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## 📋 系统要求
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+- Windows 操作系统
+- Python 3.7+ 已安装
+- edge-tts Python 包已安装
 
-## Adding your plugin to the community plugin list
+### 安装 Python 依赖
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+```bash
+pip install edge-tts
 ```
 
-If you have multiple URLs, you can also do:
+## 🔧 安装方法
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
+1. 将插件文件夹复制到 Obsidian 的插件目录
+2. 在 Obsidian 设置中启用 "Local Edge TTS" 插件
+3. 确保系统已安装 Python 和 edge-tts
+
+## 🎮 使用方法
+
+### 基本操作
+- **朗读整个笔记**：点击工具栏的音频图标 🔊
+- **朗读选中文本**：选中文本后使用命令 "朗读选中文本"
+- **停止朗读**：使用命令 "停止朗读"
+
+### 快捷命令
+- `朗读笔记` - 朗读当前整个笔记
+- `朗读选中文本` - 朗读选中的文本
+- `停止朗读` - 停止当前朗读
+
+### 设置选项
+- **语音选择**：选择不同的语音（中/英/西班牙语）
+- **播放速度**：调整朗读速度（0.5x - 2.0x）
+- **测试语音**：播放测试文本预览语音效果
+- **通知设置**：控制是否显示操作通知
+
+## 🛠️ 技术说明
+
+- 使用 Python edge-tts 库进行语音合成
+- 音频文件临时存储在插件的 temp 文件夹中
+- 支持智能的 Markdown 文本过滤
+- 跨平台文件路径处理
+
+## 🔍 故障排除
+
+### 常见问题
+1. **插件无法加载**：确保已安装 Python 和 edge-tts
+2. **语音无法播放**：检查音频权限和文件路径
+3. **中文乱码**：确保系统编码支持 UTF-8
+
+### 检查命令
+```bash
+# 检查 Python 安装
+python --version
+
+# 检查 edge-tts 安装
+pip show edge-tts
+
+# 手动测试 TTS
+python tts_helper.py speak --text "测试" --voice "zh-CN-XiaoxiaoNeural"
 ```
 
-## API Documentation
+## 📜 许可证
 
-See https://github.com/obsidianmd/obsidian-api
+MIT License
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！

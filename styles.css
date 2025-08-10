@@ -1,8 +1,261 @@
-/*
+/* Edge TTS Plugin Styles */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.edge-tts-info-div {
+	padding-bottom: 10px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	margin-bottom: 1em;
+	padding: 10px;
+	border-radius: 5px;
+	background-color: var(--background-secondary);
+}
 
-If your plugin does not need CSS, delete this file.
+.edge-tts-star-section {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	margin-top: 2em;
+	padding: 10px;
+	border-radius: 5px;
+	background-color: var(--background-secondary);
+}
 
-*/
+.edge-tts-star-section a {
+	margin-bottom: 2em;
+}
+
+.edge-tts-star-message {
+	font-size: x-large;
+	margin-bottom: 0.5em;
+	font-weight: 500;
+}
+
+.edge-tts-status-bar-control {
+	background: none;
+	border: none;
+	cursor: pointer;
+	margin-right: 5px;
+	margin-left: 5px;
+	font-size: 8px;
+	margin: 0 4px;
+	opacity: 0.8;
+	transition: opacity 0.2s ease;
+}
+
+.edge-tts-status-bar-control:hover {
+	color: var(--interactive-accent);
+	opacity: 1;
+}
+
+/* TTS Processing Progress Indicator */
+.edge-tts-status-bar-progress-container {
+	display: flex;
+	align-items: center;
+	padding: 0 8px;
+	height: 100%;
+	background-color: var(--background-modifier-success-hover);
+	border-radius: 4px;
+	animation: pulse 2s infinite;
+}
+
+.edge-tts-status-bar-icon {
+	margin-right: 6px;
+}
+
+.edge-tts-status-bar-text {
+	font-size: 12px;
+	font-weight: 500;
+}
+
+@keyframes pulse {
+	0% {
+		background-color: var(--background-modifier-success-hover);
+	}
+	50% {
+		background-color: var(--background-modifier-success);
+	}
+	100% {
+		background-color: var(--background-modifier-success-hover);
+	}
+}
+
+/* Settings styles */
+.setting-item-heading.edge-tts-collapsible-header {
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.setting-item-heading.edge-tts-collapsible-header:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* Error dialog styles */
+.tts-error-container {
+	margin: 15px 0;
+}
+
+.tts-error-text {
+	width: 100%;
+	min-height: 200px;
+	max-height: 400px;
+	font-family: var(--font-monospace);
+	font-size: 12px;
+	resize: vertical;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 10px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	white-space: pre-wrap;
+	word-wrap: break-word;
+}
+
+.tts-error-buttons {
+	margin-top: 15px;
+	text-align: right;
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+}
+
+/* Inline Progress Bar Styles */
+.inline-tts-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--text-normal);
+  box-shadow: var(--shadow-s);
+  transition: all 0.2s ease;
+}
+
+.inline-tts-progress-bar:hover {
+  border-color: var(--interactive-accent);
+  box-shadow: var(--shadow-hover);
+}
+
+.inline-tts-play-btn,
+.inline-tts-stop-btn,
+.inline-tts-delete-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  color: var(--text-normal);
+  font-size: 14px;
+  line-height: 1;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+}
+
+.inline-tts-play-btn:hover,
+.inline-tts-stop-btn:hover {
+  background: var(--interactive-hover);
+  color: var(--interactive-accent);
+}
+
+.inline-tts-delete-btn:hover {
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+}
+
+.inline-tts-progress {
+  flex: 1;
+  height: 6px;
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0 4px;
+}
+
+.inline-tts-progress::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  cursor: pointer;
+  border: 2px solid var(--background-primary);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+  transition: all 0.2s ease;
+}
+
+.inline-tts-progress::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+.inline-tts-progress::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  cursor: pointer;
+  border: 2px solid var(--background-primary);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+  transition: all 0.2s ease;
+}
+
+.inline-tts-progress::-moz-range-track {
+  background: var(--background-modifier-border);
+  height: 6px;
+  border-radius: 3px;
+  border: none;
+}
+
+.inline-tts-time {
+  min-width: 70px;
+  text-align: right;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+/* Dark mode adjustments */
+.theme-dark .inline-tts-progress-bar {
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+}
+
+.theme-dark .inline-tts-progress {
+  background: var(--background-modifier-border-hover);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .inline-tts-progress-bar {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  
+  .inline-tts-time {
+    min-width: 60px;
+    font-size: 10px;
+  }
+  
+  .inline-tts-play-btn,
+  .inline-tts-stop-btn,
+  .inline-tts-delete-btn {
+    min-width: 20px;
+    height: 20px;
+    font-size: 12px;
+  }
+}

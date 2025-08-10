@@ -1,11 +1,10 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "local-edge-tts",
+	"name": "Local Edge TTS",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Read notes aloud using Web Speech API (simple text-to-speech).",
+	"author": "ske_t",
+	"authorUrl": "",
 	"isDesktopOnly": false
 }
