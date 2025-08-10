@@ -136,6 +136,10 @@ const DEFAULT_SETTINGS = {
   chunkSize: 9000,
   enableExperimentalFeatures: false,
   reducedNoticesOnMobile: true,
+  // 右键菜单功能设置
+  enableContextMenuTTS: true,        // 右键菜单语音朗读
+  enableContextMenuMP3: true,        // 右键菜单MP3生成
+  enableInlineProgressBar: true      // 内嵌进度条
 };
 
 // Simple text filtering function
@@ -907,6 +911,48 @@ class EdgeTTSPluginSettingTab extends obsidian.PluginSettingTab {
           }
         });
       });
+
+    // 右键菜单功能设置
+    containerEl.createEl('h3', { text: '右键菜单功能' });
+
+    // 右键菜单语音朗读
+    new obsidian.Setting(containerEl)
+      .setName('启用右键菜单语音朗读')
+      .setDesc('在编辑器右键菜单中添加语音朗读功能')
+      .addToggle(toggle => {
+        toggle.setValue(this.plugin.settings.enableContextMenuTTS);
+        toggle.onChange(async (value) => {
+          this.plugin.settings.enableContextMenuTTS = value;
+          await this.plugin.saveSettings();
+          new obsidian.Notice(`右键菜单语音朗读 ${value ? '已启用' : '已禁用'}`);
+        });
+      });
+
+    // 右键菜单MP3生成
+    new obsidian.Setting(containerEl)
+      .setName('启用右键菜单MP3生成')
+      .setDesc('在编辑器右键菜单中添加MP3生成功能（仅桌面版）')
+      .addToggle(toggle => {
+        toggle.setValue(this.plugin.settings.enableContextMenuMP3);
+        toggle.onChange(async (value) => {
+          this.plugin.settings.enableContextMenuMP3 = value;
+          await this.plugin.saveSettings();
+          new obsidian.Notice(`右键菜单MP3生成 ${value ? '已启用' : '已禁用'}`);
+        });
+      });
+
+    // 内嵌音频进度条
+    new obsidian.Setting(containerEl)
+      .setName('启用内嵌音频进度条')
+      .setDesc('允许在编辑器中插入音频播放进度条')
+      .addToggle(toggle => {
+        toggle.setValue(this.plugin.settings.enableInlineProgressBar);
+        toggle.onChange(async (value) => {
+          this.plugin.settings.enableInlineProgressBar = value;
+          await this.plugin.saveSettings();
+          new obsidian.Notice(`内嵌音频进度条 ${value ? '已启用' : '已禁用'}`);
+        });
+      });
   }
 }
 
@@ -982,6 +1028,9 @@ class EdgeTTSPlugin extends obsidian.Plugin {
       }
     });
 
+    // 注册右键菜单事件
+    this.registerContextMenuEvents();
+
     console.log('Local Edge TTS Plugin loaded successfully');
   }
 
@@ -1001,6 +1050,54 @@ class EdgeTTSPlugin extends obsidian.Plugin {
       this.statusBarItem.remove();
       this.statusBarItem = null;
     }
+  }
+
+  // 注册右键菜单事件
+  registerContextMenuEvents() {
+    this.registerEvent(
+      this.app.workspace.on('editor-menu', (menu, editor, view) => {
+        // 添加语音朗读选项
+        if (this.settings.enableContextMenuTTS) {
+          menu.addItem((item) => {
+            item
+              .setTitle('语音朗读')
+              .setIcon('audio-lines')
+              .onClick(async () => {
+                const selectedText = editor.getSelection();
+                if (selectedText.trim()) {
+                  await this.startPlayback(selectedText);
+                } else {
+                  await this.readNoteAloud(editor, view);
+                }
+              });
+          });
+        }
+
+        // 添加MP3生成选项（仅桌面版）
+        if (this.settings.enableContextMenuMP3 && !obsidian.Platform.isMobile) {
+          menu.addItem((item) => {
+            item
+              .setTitle('生成MP3')
+              .setIcon('microphone')
+              .onClick(async () => {
+                await this.generateMP3(editor, view);
+              });
+          });
+        }
+
+        // 添加插入进度条选项
+        if (this.settings.enableInlineProgressBar) {
+          menu.addItem((item) => {
+            item
+              .setTitle('插入音频进度条')
+              .setIcon('audio-waveform')
+              .onClick(() => {
+                this.insertProgressBar(editor);
+              });
+          });
+        }
+      })
+    );
   }
 
   async readCurrentNote() {
@@ -1072,6 +1169,215 @@ class EdgeTTSPlugin extends obsidian.Plugin {
     if (this.settings.showNotices) {
       new obsidian.Notice('朗读已停止');
     }
+  }
+
+  // 生成MP3文件
+  async generateMP3(editor, view) {
+    if (obsidian.Platform.isMobile) {
+      if (this.settings.showNotices) {
+        new obsidian.Notice('移动端不支持MP3生成功能');
+      }
+      return;
+    }
+
+    let selectedText = '';
+    if (editor && view) {
+      selectedText = editor.getSelection() || editor.getValue();
+    }
+
+    if (!selectedText.trim()) {
+      if (this.settings.showNotices) {
+        new obsidian.Notice('没有可生成MP3的文本');
+      }
+      return;
+    }
+
+    try {
+      if (this.settings.showNotices) {
+        new obsidian.Notice('开始生成MP3...');
+      }
+
+      // 过滤文本
+      const filteredText = filterMarkdown(selectedText);
+      
+      // 检测语言并选择语音
+      const detectedLanguage = detectLanguage(filteredText);
+      const selectedVoice = this.settings.voiceSettings[detectedLanguage] || this.settings.selectedVoice;
+
+      // 生成MP3文件
+      const result = await this.tts.generateMP3(filteredText, selectedVoice);
+      
+      if (result.success) {
+        if (this.settings.showNotices) {
+          new obsidian.Notice(`MP3文件已生成: ${result.filename}`);
+        }
+      } else {
+        throw new Error(result.error || 'MP3生成失败');
+      }
+    } catch (error) {
+      console.error('MP3 generation error:', error);
+      if (this.settings.showNotices) {
+        this.showCopyableError('MP3生成失败', error.message || error.toString());
+      }
+    }
+  }
+
+  // 插入音频进度条
+  insertProgressBar(editor) {
+    if (!this.settings.enableInlineProgressBar) {
+      if (this.settings.showNotices) {
+        new obsidian.Notice('内嵌音频进度条功能未启用');
+      }
+      return;
+    }
+
+    try {
+      const cursor = editor.getCursor();
+      const line = editor.getLine(cursor.line);
+      
+      // 在当前行后插入一个新行
+      const newLine = cursor.line + 1;
+      editor.replaceRange('\n', { line: cursor.line, ch: line.length });
+      
+      // 创建进度条占位符
+      const placeholder = `<!-- TTS Progress Bar ${Date.now()} -->`;
+      editor.replaceRange(placeholder, { line: newLine, ch: 0 });
+      
+      // 获取编辑器DOM元素并插入进度条
+      setTimeout(() => {
+        const editorEl = editor.cm?.dom || editor.containerEl;
+        if (editorEl) {
+          const lines = editorEl.querySelectorAll('.cm-line');
+          const targetLine = lines[newLine];
+          
+          if (targetLine) {
+            const progressBar = this.createInlineProgressBar(targetLine, editor);
+            if (this.settings.showNotices) {
+              new obsidian.Notice('音频进度条已插入');
+            }
+          }
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error inserting progress bar:', error);
+      if (this.settings.showNotices) {
+        new obsidian.Notice('插入音频进度条失败');
+      }
+    }
+  }
+
+  // 创建内嵌进度条
+  createInlineProgressBar(containerEl, editor) {
+    const progressContainer = document.createElement('div');
+    progressContainer.className = 'inline-tts-progress-bar';
+    progressContainer.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--background-secondary);
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 6px;
+      margin: 4px 0;
+      font-size: 12px;
+      color: var(--text-normal);
+      transition: all 0.2s ease;
+    `;
+
+    // 播放/暂停按钮
+    const playPauseButton = document.createElement('button');
+    playPauseButton.innerHTML = '▶';
+    playPauseButton.style.cssText = `
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      color: var(--text-normal);
+      font-size: 14px;
+    `;
+
+    // 停止按钮
+    const stopButton = document.createElement('button');
+    stopButton.innerHTML = '⏹';
+    stopButton.style.cssText = `
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      color: var(--text-normal);
+      font-size: 14px;
+    `;
+
+    // 进度条
+    const progressBar = document.createElement('input');
+    progressBar.type = 'range';
+    progressBar.min = '0';
+    progressBar.max = '100';
+    progressBar.value = '0';
+    progressBar.style.cssText = `
+      flex: 1;
+      height: 6px;
+      background: var(--background-modifier-border);
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+      margin: 0 4px;
+    `;
+
+    // 时间显示
+    const timeDisplay = document.createElement('span');
+    timeDisplay.textContent = '0:00 / 0:00';
+    timeDisplay.style.cssText = `
+      min-width: 70px;
+      text-align: right;
+      color: var(--text-muted);
+      font-size: 11px;
+    `;
+
+    // 删除按钮
+    const deleteButton = document.createElement('button');
+    deleteButton.innerHTML = '✕';
+    deleteButton.style.cssText = `
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+      color: var(--text-muted);
+      font-size: 12px;
+    `;
+
+    // 按钮事件
+    playPauseButton.addEventListener('click', () => {
+      const selectedText = editor.getSelection() || editor.getValue();
+      if (selectedText.trim()) {
+        this.startPlayback(selectedText);
+        playPauseButton.innerHTML = '⏸';
+      }
+    });
+
+    stopButton.addEventListener('click', () => {
+      this.stopPlayback();
+      playPauseButton.innerHTML = '▶';
+    });
+
+    deleteButton.addEventListener('click', () => {
+      if (progressContainer.parentNode) {
+        progressContainer.parentNode.removeChild(progressContainer);
+      }
+    });
+
+    progressContainer.appendChild(playPauseButton);
+    progressContainer.appendChild(stopButton);
+    progressContainer.appendChild(progressBar);
+    progressContainer.appendChild(timeDisplay);
+    progressContainer.appendChild(deleteButton);
+
+    containerEl.appendChild(progressContainer);
+    return progressContainer;
   }
 
   // 显示可复制的错误信息
@@ -1217,5 +1523,7 @@ class EdgeTTSPlugin extends obsidian.Plugin {
     this.removeStatusBarButton();
   }
 }
+
+module.exports = EdgeTTSPlugin;
 
 module.exports = EdgeTTSPlugin;
