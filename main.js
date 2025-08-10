@@ -653,6 +653,147 @@ class EdgeTTS {
     this.isPlaying = false;
   }
   
+  // 生成MP3文件到指定目录
+  async generateMP3(text, voice, outputPath) {
+    return new Promise((resolve, reject) => {
+      console.log('Generating MP3 with:', { text: text.substring(0, 50) + '...', voice, outputPath });
+      
+      // 清理文本，确保没有特殊字符引起问题
+      const cleanText = text
+        .replace(/\*\*/g, '')           // 移除markdown粗体标记
+        .replace(/\*/g, '')             // 移除markdown斜体标记
+        .replace(/"/g, '')              // 移除双引号
+        .replace(/'/g, '')              // 移除单引号
+        .replace(/`/g, '')              // 移除反引号
+        .replace(/\[([^\]]*)\]/g, '$1') // 移除方括号但保留内容
+        .replace(/\(([^)]*)\)/g, '')    // 移除圆括号及内容
+        .replace(/[#>-]/g, '')          // 移除markdown标记
+        .replace(/[\\]/g, '')           // 移除反斜杠
+        .replace(/[|&;$<>]/g, '')       // 移除可能导致shell解析问题的字符
+        .replace(/\r?\n/g, ' ')         // 将换行符替换为空格
+        .replace(/\s+/g, ' ')           // 将多个空格合并为单个空格
+        .trim();
+      
+      // 获取语速设置
+      const rate = this.convertSpeedToRate(this.settings.playbackSpeed);
+      
+      // 使用JSON文件传递参数以避免命令行解析问题
+      const tempConfigFile = path.join(this.pluginDir, 'temp', `tts_config_${Date.now()}.json`);
+      const config = {
+        command: 'speak',
+        text: cleanText,
+        voice: voice,
+        rate: rate,
+        output: outputPath  // 指定输出路径
+      };
+      
+      // 写入配置文件
+      try {
+        const tempDir = path.join(this.pluginDir, 'temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        fs.writeFileSync(tempConfigFile, JSON.stringify(config, null, 2), 'utf8');
+      } catch (error) {
+        reject(new Error(`Failed to write config file: ${error.message}`));
+        return;
+      }
+      
+      const args = [
+        this.pythonScript,
+        '--config', tempConfigFile
+      ];
+      
+      console.log('Executing python for MP3 generation with config file:', tempConfigFile);
+      
+      // 在Windows上尝试python3，如果失败则使用python
+      const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+      
+      const pythonProcess = spawn(pythonCommand, args, { 
+        stdio: ['pipe', 'pipe', 'pipe'],
+        encoding: 'utf8',
+        env: { 
+          ...process.env, 
+          PYTHONIOENCODING: 'utf-8',
+          LANG: 'en_US.UTF-8',
+          LC_ALL: 'en_US.UTF-8'
+        },
+        shell: false,  // 禁用shell模式避免参数解析问题
+        windowsVerbatimArguments: true  // Windows下保持参数原样
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      pythonProcess.stdout.setEncoding('utf8');
+      pythonProcess.stderr.setEncoding('utf8');
+      
+      pythonProcess.stdout.on('data', (data) => {
+        stdout += data;
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        stderr += data;
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error('Python script execution error, exit code:', code);
+          console.error('stderr:', stderr);
+          console.error('stdout:', stdout);
+          
+          let errorMessage = 'MP3 generation failed: ';
+          if (stderr) {
+            errorMessage += stderr;
+          } else {
+            errorMessage += `Process exited with code ${code}`;
+          }
+          
+          reject(new Error(errorMessage));
+          return;
+        }
+        
+        console.log('Python script output:', stdout);
+        
+        if (!stdout.trim()) {
+          reject(new Error('Python script returned empty output'));
+          return;
+        }
+        
+        try {
+          const result = JSON.parse(stdout.trim());
+          if (result.success) {
+            console.log('MP3 file generated successfully:', result.file);
+            resolve({
+              success: true,
+              file: result.file,
+              filename: path.basename(result.file)
+            });
+          } else {
+            reject(new Error(result.error || 'Unknown error from Python script'));
+          }
+        } catch (parseError) {
+          console.error('Failed to parse Python output:', parseError);
+          console.error('Raw output:', stdout);
+          reject(new Error(`Invalid JSON response from TTS script: ${parseError.message}`));
+        }
+        
+        // 清理临时配置文件
+        try {
+          if (fs.existsSync(tempConfigFile)) {
+            fs.unlinkSync(tempConfigFile);
+          }
+        } catch (cleanupError) {
+          console.warn('Failed to cleanup temp config file:', cleanupError);
+        }
+      });
+
+      pythonProcess.on('error', (error) => {
+        reject(new Error(`Failed to start Python process: ${error.message}`));
+      });
+    });
+  }
+  
   cleanup(audioFile) {
     // 清理临时文件
     if (audioFile && fs.existsSync(audioFile)) {
@@ -894,6 +1035,21 @@ class EdgeTTSPluginSettingTab extends obsidian.PluginSettingTab {
           await this.plugin.saveSettings();
         });
       });
+      
+    containerEl.createEl('h3', { text: '文件管理设置' });
+      
+    // 输出文件夹设置
+    new obsidian.Setting(containerEl)
+      .setName('音频文件输出文件夹')
+      .setDesc('设置生成的音频文件保存的文件夹名称（相对于库根目录）')
+      .addText(text => {
+        text.setValue(this.plugin.settings.outputFolder);
+        text.onChange(async (value) => {
+          this.plugin.settings.outputFolder = value || 'Note Narration Audio';
+          await this.plugin.saveSettings();
+        });
+        text.setPlaceholder('Note Narration Audio');
+      });
 
     // Status bar button
     new obsidian.Setting(containerEl)
@@ -943,14 +1099,14 @@ class EdgeTTSPluginSettingTab extends obsidian.PluginSettingTab {
 
     // 内嵌音频进度条
     new obsidian.Setting(containerEl)
-      .setName('启用内嵌音频进度条')
-      .setDesc('允许在编辑器中插入音频播放进度条')
+      .setName('启用生成音频文件')
+      .setDesc('允许将选中文本生成MP3文件并插入引用')
       .addToggle(toggle => {
         toggle.setValue(this.plugin.settings.enableInlineProgressBar);
         toggle.onChange(async (value) => {
           this.plugin.settings.enableInlineProgressBar = value;
           await this.plugin.saveSettings();
-          new obsidian.Notice(`内嵌音频进度条 ${value ? '已启用' : '已禁用'}`);
+          new obsidian.Notice(`生成音频文件功能 ${value ? '已启用' : '已禁用'}`);
         });
       });
   }
@@ -1089,10 +1245,10 @@ class EdgeTTSPlugin extends obsidian.Plugin {
         if (this.settings.enableInlineProgressBar) {
           menu.addItem((item) => {
             item
-              .setTitle('插入音频进度条')
+              .setTitle('生成音频文件')
               .setIcon('audio-waveform')
-              .onClick(() => {
-                this.insertProgressBar(editor);
+              .onClick(async () => {
+                await this.insertProgressBar(editor);
               });
           });
         }
@@ -1222,8 +1378,8 @@ class EdgeTTSPlugin extends obsidian.Plugin {
     }
   }
 
-  // 插入音频进度条
-  insertProgressBar(editor) {
+  // 插入音频进度条（生成MP3并插入引用）
+  async insertProgressBar(editor) {
     if (!this.settings.enableInlineProgressBar) {
       if (this.settings.showNotices) {
         new obsidian.Notice('内嵌音频进度条功能未启用');
@@ -1231,38 +1387,81 @@ class EdgeTTSPlugin extends obsidian.Plugin {
       return;
     }
 
+    // 获取选中的文本
+    const selectedText = editor.getSelection();
+    if (!selectedText.trim()) {
+      if (this.settings.showNotices) {
+        new obsidian.Notice('请先选择要转换为音频的文本');
+      }
+      return;
+    }
+
     try {
-      const cursor = editor.getCursor();
-      const line = editor.getLine(cursor.line);
+      if (this.settings.showNotices) {
+        new obsidian.Notice('正在生成音频文件...');
+      }
+
+      // 过滤Markdown文本
+      const filteredText = filterMarkdown(selectedText);
       
-      // 在当前行后插入一个新行
-      const newLine = cursor.line + 1;
-      editor.replaceRange('\n', { line: cursor.line, ch: line.length });
+      // 检测语言并选择合适的语音
+      const detectedLanguage = this.tts.detectLanguage(filteredText);
+      const selectedVoice = this.tts.selectVoiceForLanguage(detectedLanguage);
       
-      // 创建进度条占位符
-      const placeholder = `<!-- TTS Progress Bar ${Date.now()} -->`;
-      editor.replaceRange(placeholder, { line: newLine, ch: 0 });
+      console.log(`[插入音频进度条] 检测到语言: ${detectedLanguage}, 选择语音: ${selectedVoice}`);
       
-      // 获取编辑器DOM元素并插入进度条
-      setTimeout(() => {
-        const editorEl = editor.cm?.dom || editor.containerEl;
-        if (editorEl) {
-          const lines = editorEl.querySelectorAll('.cm-line');
-          const targetLine = lines[newLine];
-          
-          if (targetLine) {
-            const progressBar = this.createInlineProgressBar(targetLine, editor);
-            if (this.settings.showNotices) {
-              new obsidian.Notice('音频进度条已插入');
-            }
-          }
+      // 确保输出文件夹存在
+      const outputFolderName = this.settings.outputFolder || 'Note Narration Audio';
+      const vaultPath = this.app.vault.adapter.basePath;
+      const outputDir = path.join(vaultPath, outputFolderName);
+      
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+      
+      // 生成文件名（基于文本内容前10个字符 + 时间戳）
+      const textPrefix = filteredText
+        .substring(0, 10)
+        .replace(/[^\w\u4e00-\u9fff]/g, '_')  // 保留中英文字符，其他替换为下划线
+        .replace(/_+/g, '_')  // 合并多个下划线
+        .replace(/^_|_$/g, '');  // 去除首尾下划线
+      
+      const timestamp = Date.now();
+      const filename = `${textPrefix || 'audio'}_${timestamp}.mp3`;
+      const outputPath = path.join(outputDir, filename);
+      
+      // 生成MP3文件
+      const result = await this.tts.generateMP3(filteredText, selectedVoice, outputPath);
+      
+      if (result.success) {
+        // 生成相对于vault根目录的路径
+        const relativePath = path.join(outputFolderName, filename).replace(/\\/g, '/');
+        
+        // 在光标位置插入音频文件引用
+        const cursor = editor.getCursor();
+        const audioReference = `![[${relativePath}]]`;
+        
+        // 如果当前行不为空，先换行
+        const currentLine = editor.getLine(cursor.line);
+        const insertText = currentLine.trim() ? `\n${audioReference}` : audioReference;
+        
+        editor.replaceRange(insertText, cursor);
+        
+        if (this.settings.showNotices) {
+          new obsidian.Notice(`音频文件已生成并插入: ${filename}`);
         }
-      }, 100);
+        
+        console.log(`[插入音频进度条] 成功生成音频文件: ${outputPath}`);
+        console.log(`[插入音频进度条] 插入的引用: ${audioReference}`);
+        
+      } else {
+        throw new Error(result.error || 'MP3生成失败');
+      }
       
     } catch (error) {
-      console.error('Error inserting progress bar:', error);
+      console.error('插入音频进度条错误:', error);
       if (this.settings.showNotices) {
-        new obsidian.Notice('插入音频进度条失败');
+        this.showCopyableError('插入音频进度条失败', error.message || error.toString());
       }
     }
   }
