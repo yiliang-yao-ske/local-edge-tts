@@ -1437,15 +1437,22 @@ class EdgeTTSPlugin extends obsidian.Plugin {
         // 生成相对于vault根目录的路径
         const relativePath = path.join(outputFolderName, filename).replace(/\\/g, '/');
         
-        // 在光标位置插入音频文件引用
-        const cursor = editor.getCursor();
+        // 生成音频引用
         const audioReference = `![[${relativePath}]]`;
         
-        // 如果当前行不为空，先换行
-        const currentLine = editor.getLine(cursor.line);
-        const insertText = currentLine.trim() ? `\n${audioReference}` : audioReference;
+        // 获取选中文本的结束位置（使用 getCursor('to') 获取选中区域的结束位置）
+        const endPos = editor.getCursor('to');
         
-        editor.replaceRange(insertText, cursor);
+        // 在选中文本的结束位置后插入音频引用
+        const insertText = `\n\n${audioReference}`;
+        editor.replaceRange(insertText, endPos);
+        
+        // 清除选中状态并将光标移动到插入的音频引用后面
+        const newCursorPos = {
+          line: endPos.line + 2,
+          ch: audioReference.length
+        };
+        editor.setCursor(newCursorPos);
         
         if (this.settings.showNotices) {
           new obsidian.Notice(`音频文件已生成并插入: ${filename}`);
@@ -1453,6 +1460,9 @@ class EdgeTTSPlugin extends obsidian.Plugin {
         
         console.log(`[插入音频进度条] 成功生成音频文件: ${outputPath}`);
         console.log(`[插入音频进度条] 插入的引用: ${audioReference}`);
+        
+        console.log(`[插入音频进度条] 在位置 [${endPos.line}:${endPos.ch}] 后插入音频引用`);
+        console.log(`[插入音频进度条] 光标移动到 [${newCursorPos.line}:${newCursorPos.ch}]`);
         
       } else {
         throw new Error(result.error || 'MP3生成失败');
